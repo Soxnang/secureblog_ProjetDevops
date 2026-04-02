@@ -1,0 +1,3 @@
+# Faux positifs - dépendances Python de documentation
+# Ces fichiers ne sont jamais exécutés en production
+vendor/mockery/mockery/docs/requirements.txt
