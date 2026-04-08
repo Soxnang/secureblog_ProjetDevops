@@ -4,62 +4,99 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // Liste tous les posts publiés
     public function index()
     {
-        //
+        $posts = Post::published()
+                     ->with('user')
+                     ->latest()
+                     ->paginate(10);
+
+        return view('posts.index', compact('posts'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
+    // Formulaire de création
     public function create()
     {
-        //
+        $this->authorize('create', Post::class);
+        return view('posts.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Enregistre un nouveau post
     public function store(Request $request)
     {
-        //
+        $this->authorize('create', Post::class);
+
+        $validated = $request->validate([
+            'title'   => 'required|min:5|max:255',
+            'content' => 'required|min:10',
+        ]);
+
+        $post = Post::create([
+            'title'        => $validated['title'],
+            'slug'         => Str::slug($validated['title']),
+            'content'      => $validated['content'],
+            'user_id'      => Auth::id(),
+            'published'    => $request->has('published'),
+            'published_at' => $request->has('published') ? now() : null,
+        ]);
+
+        return redirect()
+            ->route('posts.show', $post)
+            ->with('success', 'Article créé avec succès !');
     }
 
-    /**
-     * Display the specified resource.
-     */
+    // Affiche un post
     public function show(Post $post)
     {
-        //
+        return view('posts.show', compact('post'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
+    // Formulaire de modification
     public function edit(Post $post)
     {
-        //
+        $this->authorize('update', $post);
+        return view('posts.edit', compact('post'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
+    // Met à jour un post
     public function update(Request $request, Post $post)
     {
-        //
+        $this->authorize('update', $post);
+
+        $validated = $request->validate([
+            'title'   => 'required|min:5|max:255',
+            'content' => 'required|min:10',
+        ]);
+
+        $post->update([
+            'title'        => $validated['title'],
+            'slug'         => Str::slug($validated['title']),
+            'content'      => $validated['content'],
+            'published'    => $request->has('published'),
+            'published_at' => $request->has('published')
+                              ? ($post->published_at ?? now())
+                              : null,
+        ]);
+
+        return redirect()
+            ->route('posts.show', $post)
+            ->with('success', 'Article mis à jour !');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
+    // Supprime un post
     public function destroy(Post $post)
     {
-        //
+        $this->authorize('delete', $post);
+        $post->delete();
+
+        return redirect()
+            ->route('posts.index')
+            ->with('success', 'Article supprimé !');
     }
 }
